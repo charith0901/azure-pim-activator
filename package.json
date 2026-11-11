@@ -1,0 +1,133 @@
+{
+  "name": "azure-pim-activator",
+  "displayName": "Azure PIM Activator",
+  "description": "Activate Azure PIM eligible roles from saved profiles.",
+  "publisher": "CharithJayasankha",
+  "version": "0.2.1",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Azure",
+    "Other"
+  ],
+  "keywords": [
+    "azure",
+    "pim",
+    "privileged identity management",
+    "entra",
+    "azure ad",
+    "rbac",
+    "role activation",
+    "just-in-time",
+    "jit"
+  ],
+  "galleryBanner": {
+    "color": "#0078D4",
+    "theme": "dark"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pim.activate",
+        "title": "Activate profile",
+        "category": "PIM",
+        "icon": "$(play)"
+      },
+      {
+        "command": "pim.newProfile",
+        "title": "New profile",
+        "category": "PIM",
+        "icon": "$(add)"
+      },
+      {
+        "command": "pim.deleteProfile",
+        "title": "Delete profile",
+        "category": "PIM",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "pim.refresh",
+        "title": "Refresh",
+        "category": "PIM",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pim",
+          "title": "Azure PIM",
+          "icon": "media/pim.svg"
+        }
+      ]
+    },
+    "views": {
+      "pim": [
+        {
+          "id": "pimProfiles",
+          "name": "Profiles"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "pimProfiles",
+        "contents": "No profiles yet.\n[New profile](command:pim.newProfile)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pim.newProfile",
+          "when": "view == pimProfiles",
+          "group": "navigation"
+        },
+        {
+          "command": "pim.refresh",
+          "when": "view == pimProfiles",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pim.activate",
+          "when": "view == pimProfiles && viewItem =~ /^profile/",
+          "group": "inline"
+        },
+        {
+          "command": "pim.deleteProfile",
+          "when": "view == pimProfiles && viewItem =~ /^profile/",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Azure PIM",
+      "properties": {
+        "pim.reminderMinutes": {
+          "type": "number",
+          "default": 15,
+          "minimum": 0,
+          "description": "Minutes before expiry to show a reminder (0 disables)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3",
+    "typescript": "^5.6.0"
+  }
+}
