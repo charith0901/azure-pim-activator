@@ -4,7 +4,15 @@
   "description": "Activate Azure PIM eligible roles from saved profiles.",
   "publisher": "CharithJayasankha",
   "version": "0.2.1",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/charith0901/azure-pim-activator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/charith0901/azure-pim-activator/issues"
+  },
+  "homepage": "https://github.com/charith0901/azure-pim-activator#readme",
   "engines": {
     "vscode": "^1.90.0"
   },

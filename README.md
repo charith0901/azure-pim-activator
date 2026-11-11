@@ -59,4 +59,8 @@ The extension talks only to Microsoft's Azure Resource Manager API (`management.
 
 ## Feedback
 
-Found a bug or have an idea? Leave a review or a question on the Marketplace page.
+Found a bug or have an idea? [Open an issue on GitHub](https://github.com/charith0901/azure-pim-activator/issues), or leave a review on the Marketplace page.
+
+## License
+
+[MIT](LICENSE)
