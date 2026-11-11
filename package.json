@@ -5,6 +5,7 @@
   "publisher": "CharithJayasankha",
   "version": "0.2.1",
   "license": "MIT",
+  "icon": "media/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/charith0901/azure-pim-activator.git"
