@@ -3,7 +3,7 @@
   "displayName": "Azure PIM Activator",
   "description": "Activate Azure PIM eligible roles from saved profiles.",
   "publisher": "CharithJayasankha",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
@@ -61,6 +61,12 @@
         "icon": "$(trash)"
       },
       {
+        "command": "pim.setActivationLength",
+        "title": "Set activation length",
+        "category": "PIM",
+        "icon": "$(clock)"
+      },
+      {
         "command": "pim.refresh",
         "title": "Refresh",
         "category": "PIM",
@@ -113,12 +119,24 @@
           "command": "pim.deleteProfile",
           "when": "view == pimProfiles && viewItem =~ /^profile/",
           "group": "inline"
+        },
+        {
+          "command": "pim.setActivationLength",
+          "when": "view == pimProfiles && viewItem =~ /^profile/",
+          "group": "1_edit"
         }
       ]
     },
     "configuration": {
       "title": "Azure PIM",
       "properties": {
+        "pim.activationHours": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0.5,
+          "maximum": 24,
+          "markdownDescription": "Default activation length in hours (0.5–24) for profiles that don't set their own. Azure rejects requests longer than the role's PIM policy allows, which is often 8 hours."
+        },
         "pim.reminderMinutes": {
           "type": "number",
           "default": 15,

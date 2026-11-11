@@ -10,10 +10,11 @@ import {
   createSelfActivationRequest,
   waitForActiveAssignment,
 } from "../core/pim";
-import { describeError } from "../core/errors";
+import { AzureRequestError, describeError } from "../core/errors";
 import { formatLocalTime, formatRemaining } from "../core/time";
 import { ProfileStore } from "../profiles/store";
 import { ArmScheduleInstance, PimConfig, Profile, profileToConfig } from "../core/types";
+import { activationHoursFor, formatHours } from "./duration";
 
 /** Profiles (lower-cased names) with an activation currently in flight. */
 const inFlight = new Set<string>();
@@ -58,16 +59,17 @@ export async function activateProfile(store: ProfileStore, profile: Profile): Pr
     return;
   }
   inFlight.add(key);
+  const hours = activationHoursFor(profile);
 
   try {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `Activating ${profile.roleName} (${profile.name})`,
+        title: `Activating ${profile.roleName} (${profile.name}) for ${formatHours(hours)}`,
         cancellable: true,
       },
       async (progress, cancel) => {
-        const config = profileToConfig(profile);
+        const config = profileToConfig(profile, hours);
 
         progress.report({ message: `Signing in to ${profile.tenantName || profile.tenantId}…` });
         const token = (await getArmToken(profile.tenantId))!;
@@ -153,10 +155,27 @@ export async function activateProfile(store: ProfileStore, profile: Profile): Pr
       },
     );
   } catch (err) {
-    void vscode.window.showErrorMessage(`PIM: ${describeError(err)}`);
+    if (isDurationTooLong(err)) {
+      const choice = await vscode.window.showErrorMessage(
+        `PIM: ${formatHours(hours)} is longer than the ${profile.roleName} policy allows. Choose a shorter activation length.`,
+        "Set activation length",
+      );
+      if (choice) await vscode.commands.executeCommand("pim.setActivationLength", profile);
+    } else {
+      void vscode.window.showErrorMessage(`PIM: ${describeError(err)}`);
+    }
   } finally {
     inFlight.delete(key);
   }
+}
+
+/** Azure's PIM policy rejected the requested duration (Expiration rule). */
+function isDurationTooLong(err: unknown): boolean {
+  return (
+    err instanceof AzureRequestError &&
+    err.azureCode === "RoleAssignmentRequestPolicyValidationFailed" &&
+    /Expiration/i.test(err.azureMessage ?? "")
+  );
 }
 
 /** Silently re-checks every profile's activation state. Never prompts for sign-in. */

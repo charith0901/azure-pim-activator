@@ -10,7 +10,7 @@ import { describeError } from "../core/errors";
 import { formatLocalTime } from "../core/time";
 import { ProfileStore } from "../profiles/store";
 import { activateProfile } from "./activate";
-import { ACTIVATION_DURATION, Eligibility, Profile, Tenant } from "../core/types";
+import { Eligibility, Profile, Tenant } from "../core/types";
 
 const TOTAL_STEPS = 3;
 const BASE_TITLE = "Azure PIM: New profile";
@@ -325,7 +325,6 @@ export async function runNewProfileWizard(store: ProfileStore): Promise<Profile 
       principalId: session.oid,
       roleDefinitionId: eligibility!.roleDefinitionId,
       roleName: eligibility!.roleName,
-      activationDuration: ACTIVATION_DURATION,
     });
 
     // Don't block the wizard's result on a notification the user may never dismiss.

@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { Profile } from "../core/types";
 import { formatAgo, formatLocalTime, formatShortRemaining } from "../core/time";
 import { ProfileStore } from "../profiles/store";
+import { activationHoursFor, formatHours } from "./duration";
 
 export class ProfilesTreeProvider implements vscode.TreeDataProvider<Profile>, vscode.Disposable {
   private readonly emitter = new vscode.EventEmitter<Profile | undefined | void>();
@@ -45,6 +46,10 @@ export class ProfilesTreeProvider implements vscode.TreeDataProvider<Profile>, v
       );
     }
     md.appendMarkdown(`- **Tenant:** ${escapeMd(p.tenantName || p.tenantId)} (\`${p.tenantId}\`)\n`);
+    md.appendMarkdown(
+      `- **Activation length:** ${formatHours(activationHoursFor(p))}${p.activationHours === undefined ? " (default)" : ""}
+`,
+    );
     md.appendMarkdown(`- **Last used:** ${p.lastUsedAt ? formatAgo(p.lastUsedAt) : "never"}\n`);
     if (active) {
       md.appendMarkdown(`- **Active until:** ${formatLocalTime(end)} (${formatShortRemaining(end)} left)\n`);

@@ -1,6 +1,14 @@
 // Shared contracts for the Azure PIM extension. Every module builds against these.
 
-export const ACTIVATION_DURATION = "PT480M";
+export const DEFAULT_ACTIVATION_HOURS = 8;
+/** PIM accepts activations from 30 minutes up to 24 hours (the role's policy may cap it lower). */
+export const MIN_ACTIVATION_HOURS = 0.5;
+export const MAX_ACTIVATION_HOURS = 24;
+
+/** ISO 8601 duration for ARM, e.g. 8 -> "PT480M". */
+export function hoursToIsoDuration(hours: number): string {
+  return `PT${Math.round(hours * 60)}M`;
+}
 
 export interface Profile {
   name: string;
@@ -20,7 +28,10 @@ export interface Profile {
   /** Role definition GUID (last segment). */
   roleDefinitionId: string;
   roleName: string;
-  activationDuration: string;
+  /** Per-profile activation length in hours. Unset = use the pim.activationHours setting. */
+  activationHours?: number;
+  /** @deprecated Written by 0.2.x as a fixed "PT480M"; ignored. */
+  activationDuration?: string;
   createdAt: string;
   lastUsedAt?: string;
 }
@@ -101,7 +112,7 @@ export interface ActivationRecord {
   remindedFor?: string;
 }
 
-export function profileToConfig(p: Profile): PimConfig {
+export function profileToConfig(p: Profile, hours: number = DEFAULT_ACTIVATION_HOURS): PimConfig {
   return {
     tenantId: p.tenantId,
     subscriptionId: p.subscriptionId,
@@ -109,6 +120,6 @@ export function profileToConfig(p: Profile): PimConfig {
     scope: p.scope,
     roleDefinitionId: p.roleDefinitionId,
     roleName: p.roleName,
-    activationDuration: ACTIVATION_DURATION,
+    activationDuration: hoursToIsoDuration(hours),
   };
 }

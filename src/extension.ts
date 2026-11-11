@@ -7,6 +7,7 @@ import { createStatusBar } from "./ui/statusBar";
 import { startReminder } from "./ui/reminder";
 import { runNewProfileWizard } from "./ui/wizard";
 import { activateProfile, refreshActivations } from "./ui/activate";
+import { formatHours, pickActivationHours } from "./ui/duration";
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -80,6 +81,24 @@ export function activate(context: vscode.ExtensionContext): void {
       if (answer === "Delete") {
         await store.delete(profile.name);
       }
+    }),
+
+    vscode.commands.registerCommand("pim.setActivationLength", async (arg?: unknown) => {
+      const picked = asProfile(arg) ?? (await pickProfile(store, "Select a profile to change"));
+      // Re-read so we don't overwrite fields changed since the tree item was rendered.
+      const profile = picked && (store.get(picked.name) ?? picked);
+      if (!profile) return;
+
+      const hours = await pickActivationHours(profile);
+      if (hours === undefined) return;
+
+      const { activationHours: _old, ...rest } = profile;
+      await store.save(hours === null ? rest : { ...rest, activationHours: hours });
+      void vscode.window.showInformationMessage(
+        hours === null
+          ? `"${profile.name}" now uses the default activation length.`
+          : `"${profile.name}" will activate for ${formatHours(hours)}.`,
+      );
     }),
 
     vscode.commands.registerCommand("pim.refresh", () =>
