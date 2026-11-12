@@ -5,6 +5,20 @@ import type { ArmScheduleInstance, Eligibility, Subscription, Tenant } from "./t
 
 export const MANAGEMENT_URL = "https://management.azure.com";
 
+/** Throws unless the URL is on Azure Resource Manager, so the bearer token is never sent elsewhere. */
+export function assertArmUrl(url: string): string {
+  let origin: string;
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    throw new Error("Refusing to send credentials to an invalid URL.");
+  }
+  if (origin !== MANAGEMENT_URL) {
+    throw new Error(`Refusing to send credentials to ${origin}; only ${MANAGEMENT_URL} is allowed.`);
+  }
+  return url;
+}
+
 interface ArmPage<T> {
   value?: T[];
   nextLink?: string;
@@ -16,7 +30,7 @@ export async function armGetAll<T>(url: string, token: string, action: string): 
   let nextUrl: string | undefined = url;
 
   while (nextUrl) {
-    const response: Response = await fetch(nextUrl, {
+    const response: Response = await fetch(assertArmUrl(nextUrl), {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

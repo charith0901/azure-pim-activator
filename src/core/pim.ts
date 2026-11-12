@@ -1,7 +1,7 @@
 // Azure PIM (Microsoft.Authorization) REST calls and activation polling.
 
 import { randomUUID } from "crypto";
-import { MANAGEMENT_URL } from "./arm";
+import { MANAGEMENT_URL, assertArmUrl } from "./arm";
 import { createAzureError } from "./errors";
 import type { ArmScheduleInstance, PimConfig } from "./types";
 
@@ -48,7 +48,7 @@ export async function getEligibilityScheduleInstances(
     `?api-version=2020-10-01` +
     `&$filter=asTarget()`;
 
-  const response = await fetch(url, {
+  const response = await fetch(assertArmUrl(url), {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -72,7 +72,7 @@ export async function getRoleAssignmentScheduleInstances(
     providerUrl(scope, "roleAssignmentScheduleInstances") +
     `?api-version=2020-10-01-preview&%24filter=asTarget()%20and%20atScope()`;
 
-  const response = await fetch(url, {
+  const response = await fetch(assertArmUrl(url), {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -188,7 +188,7 @@ export async function createSelfActivationRequest(
     },
   };
 
-  const response = await fetch(requestUrl, {
+  const response = await fetch(assertArmUrl(requestUrl), {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
