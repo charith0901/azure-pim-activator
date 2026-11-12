@@ -1,0 +1,51 @@
+name: Release
+
+# Push a tag matching package.json's version to publish, e.g.:
+#   git tag v0.3.0 && git push origin v0.3.0
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Check tag matches package.json version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version v${version}"
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Package
+        run: npx vsce package --out "azure-pim-activator-${VERSION}.vsix"
+
+      - name: Publish to VS Code Marketplace
+        run: npx vsce publish --packagePath "azure-pim-activator-${VERSION}.vsix"
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "azure-pim-activator-${VERSION}.vsix" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for details."
+        env:
+          GH_TOKEN: ${{ github.token }}
