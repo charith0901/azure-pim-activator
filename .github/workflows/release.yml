@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write # create the GitHub Release
+  id-token: write # trusted publishing (OIDC) to the VS Code Marketplace
 
 jobs:
   release:
@@ -38,9 +39,8 @@ jobs:
         run: npx vsce package --out "azure-pim-activator-${VERSION}.vsix"
 
       - name: Publish to VS Code Marketplace
-        run: npx vsce publish --packagePath "azure-pim-activator-${VERSION}.vsix"
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        # Uses the Marketplace trusted publishing policy for this repo/workflow; no PAT needed.
+        run: npx vsce publish --oidc --packagePath "azure-pim-activator-${VERSION}.vsix"
 
       - name: Create GitHub Release
         run: |
