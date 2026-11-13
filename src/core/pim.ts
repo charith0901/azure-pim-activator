@@ -7,14 +7,6 @@ import type { ArmScheduleInstance, PimConfig } from "./types";
 
 export const FAILED_STATUSES: string[] = ["Denied", "Failed", "Canceled", "Revoked", "TimedOut"];
 
-const VERIFY_TIMEOUT_MS = 20 * 60 * 1000;
-const POLL_INTERVAL_MS = 15000;
-const MAX_CONSECUTIVE_FAILURES = 3;
-
-export interface Cancellable {
-  isCancellationRequested: boolean;
-}
-
 function providerUrl(scope: string, resourcePath: string): string {
   return `${MANAGEMENT_URL}${scope}/providers/Microsoft.Authorization/${resourcePath}`;
 }
@@ -157,12 +149,36 @@ export async function findActiveForProfile(
   return matches.sort((a, b) => endOf(b) - endOf(a))[0];
 }
 
+/** Parses an ISO-8601 time duration like "PT480M" or "PT8H30M" into milliseconds. */
+function isoDurationMs(duration: string | undefined): number {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i.exec(duration ?? "");
+  if (!m) return NaN;
+  const [, d, h, min, s] = m.map((v) => Number(v ?? 0));
+  return (((d * 24 + h) * 60 + min) * 60 + s) * 1000;
+}
+
+/** End time of a just-submitted activation, from Azure's response or start + requested duration. */
+function expectedEnd(scheduleInfo: any, requestedDuration: string): string {
+  const explicit = scheduleInfo?.expiration?.endDateTime;
+  if (explicit) return String(explicit);
+  const start = scheduleInfo?.startDateTime ? new Date(scheduleInfo.startDateTime).getTime() : Date.now();
+  let ms = isoDurationMs(scheduleInfo?.expiration?.duration);
+  if (!Number.isFinite(ms)) ms = isoDurationMs(requestedDuration);
+  return new Date((Number.isFinite(start) ? start : Date.now()) + (ms || 0)).toISOString();
+}
+
 // Sends a SelfActivate request.
 export async function createSelfActivationRequest(
   config: PimConfig,
   token: string,
   eligibilityInstanceName: string,
-): Promise<{ requestId: string; status: string; targetRoleAssignmentScheduleId?: string; raw: any }> {
+): Promise<{
+  requestId: string;
+  status: string;
+  targetRoleAssignmentScheduleId?: string;
+  endDateTime: string;
+  raw: any;
+}> {
   const { scope } = config;
   const requestId = randomUUID();
 
@@ -207,78 +223,8 @@ export async function createSelfActivationRequest(
     requestId,
     status: String(raw?.properties?.status ?? ""),
     targetRoleAssignmentScheduleId: raw?.properties?.targetRoleAssignmentScheduleId || undefined,
+    endDateTime: expectedEnd(raw?.properties?.scheduleInfo, config.activationDuration),
     raw,
   };
 }
 
-function throwIfCancelled(cancel: Cancellable): void {
-  if (cancel.isCancellationRequested) {
-    throw new Error("Cancelled");
-  }
-}
-
-// Sleeps in 1s slices so cancellation is noticed promptly.
-async function sleep(ms: number, cancel: Cancellable): Promise<void> {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    throwIfCancelled(cancel);
-    await new Promise((resolve) => setTimeout(resolve, Math.min(1000, end - Date.now())));
-  }
-  throwIfCancelled(cancel);
-}
-
-// Polls until Azure provisions the requested assignment.
-export async function waitForActiveAssignment(
-  config: PimConfig,
-  token: string,
-  targetRoleAssignmentScheduleId: string | undefined,
-  roleEligibilityScheduleId: string,
-  onTick: (message: string) => void,
-  cancel: Cancellable,
-): Promise<ArmScheduleInstance> {
-  const startTime = Date.now();
-  let consecutiveFailures = 0;
-
-  while (Date.now() - startTime < VERIFY_TIMEOUT_MS) {
-    throwIfCancelled(cancel);
-
-    let instances: ArmScheduleInstance[];
-    try {
-      instances = await getRoleAssignmentScheduleInstances(config.scope, token);
-      consecutiveFailures = 0;
-    } catch (error) {
-      // Tolerate brief API hiccups during the long wait.
-      consecutiveFailures++;
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        throw error;
-      }
-      instances = [];
-    }
-
-    throwIfCancelled(cancel);
-
-    const created = instances.find(
-      ({ properties }) =>
-        sameId(properties?.roleAssignmentScheduleId, targetRoleAssignmentScheduleId) ||
-        sameId(properties?.linkedRoleEligibilityScheduleId, roleEligibilityScheduleId),
-    );
-
-    if (created) {
-      return created;
-    }
-
-    const checkedAt = new Date().toLocaleTimeString();
-    onTick(
-      consecutiveFailures > 0
-        ? `Last check ${checkedAt} · failed (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}), retrying`
-        : `Last check ${checkedAt} · not ready, next in ${POLL_INTERVAL_MS / 1000}s`,
-    );
-
-    await sleep(POLL_INTERVAL_MS, cancel);
-  }
-
-  throw new Error(
-    `Activation request was created, but the role did not become active within ${VERIFY_TIMEOUT_MS / 60000} minutes. ` +
-      `Target schedule ID: ${targetRoleAssignmentScheduleId ?? "(none)"}; eligibility schedule ID: ${roleEligibilityScheduleId}`,
-  );
-}

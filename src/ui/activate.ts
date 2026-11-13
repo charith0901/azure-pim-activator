@@ -8,7 +8,6 @@ import {
   findActiveInstance,
   findActiveForProfile,
   createSelfActivationRequest,
-  waitForActiveAssignment,
 } from "../core/pim";
 import { AzureRequestError, describeError } from "../core/errors";
 import { formatLocalTime, formatRemaining } from "../core/time";
@@ -23,9 +22,8 @@ function sameId(a?: string, b?: string): boolean {
   return Boolean(a && b && a.toLowerCase() === b.toLowerCase());
 }
 
-function isCancelled(err: unknown, cancel: vscode.CancellationToken): boolean {
-  return cancel.isCancellationRequested || (err instanceof Error && err.message === "Cancelled");
-}
+/** Delay before re-reading Azure to reconcile a freshly activated role's end time. */
+const RECONCILE_DELAY_MS = 30_000;
 
 async function chooseAssignment(
   assignments: ArmScheduleInstance[],
@@ -128,30 +126,14 @@ export async function activateProfile(store: ProfileStore, profile: Profile): Pr
           );
         }
 
-        progress.report({ message: "Waiting for the role to become active…" });
-        try {
-          const instance = await waitForActiveAssignment(
-            config,
-            token,
-            result.targetRoleAssignmentScheduleId,
-            eligibilityScheduleId,
-            (message) => progress.report({ message }),
-            cancel,
-          );
-          const end = instance.properties.endDateTime;
-          await store.setActivation(profile.name, { endDateTime: end });
-          void vscode.window.showInformationMessage(
-            `✔ ${config.roleName} active until ${formatLocalTime(end)} (${formatRemaining(end)} left)`,
-          );
-        } catch (err) {
-          if (isCancelled(err, cancel)) {
-            void vscode.window.showInformationMessage(
-              "Stopped waiting. The request was submitted and may still complete.",
-            );
-            return;
-          }
-          throw err;
-        }
+        // The role is usable as soon as Azure accepts the request; no need to poll for it.
+        const end = result.endDateTime;
+        await store.setActivation(profile.name, { endDateTime: end });
+        void vscode.window.showInformationMessage(
+          `✔ ${config.roleName} activated until ${formatLocalTime(end)} (${formatRemaining(end)} left)`,
+        );
+        // Reconcile the stored end time with Azure's actual instance shortly after.
+        setTimeout(() => void reconcileActivation(store, profile.name, config, token), RECONCILE_DELAY_MS);
       },
     );
   } catch (err) {
@@ -166,6 +148,24 @@ export async function activateProfile(store: ProfileStore, profile: Profile): Pr
     }
   } finally {
     inFlight.delete(key);
+  }
+}
+
+/** Updates the stored end time if Azure already lists the instance; leaves it alone otherwise. */
+async function reconcileActivation(
+  store: ProfileStore,
+  profileName: string,
+  config: PimConfig,
+  token: string,
+): Promise<void> {
+  try {
+    const inst = await findActiveForProfile(config, token);
+    const end = inst?.properties.endDateTime;
+    if (end && store.getActivation(profileName)?.endDateTime !== end) {
+      await store.setActivation(profileName, { endDateTime: end });
+    }
+  } catch (err) {
+    console.warn(`PIM: failed to reconcile activation for "${profileName}": ${describeError(err)}`);
   }
 }
 
