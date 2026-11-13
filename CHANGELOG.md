@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 ### Changed
 - **Faster activation.** Activation now finishes as soon as Azure accepts the request. It no longer waits, sometimes for minutes, for Azure to report the role as provisioned, because the role can already be used at that point.
