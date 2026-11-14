@@ -110,6 +110,8 @@ export interface ActivationRecord {
   endDateTime?: string;
   /** ISO time a reminder was shown for this endDateTime (prevents repeats). */
   remindedFor?: string;
+  /** endDateTime for which an "expired" notice was shown (prevents repeats). */
+  expiredNotifiedFor?: string;
 }
 
 export function profileToConfig(p: Profile, hours: number = DEFAULT_ACTIVATION_HOURS): PimConfig {

@@ -14,6 +14,7 @@ import { formatLocalTime, formatRemaining } from "../core/time";
 import { ProfileStore } from "../profiles/store";
 import { ArmScheduleInstance, PimConfig, Profile, profileToConfig } from "../core/types";
 import { activationHoursFor, formatHours } from "./duration";
+import { notifyDesktop } from "./desktopNotify";
 
 /** Profiles (lower-cased names) with an activation currently in flight. */
 const inFlight = new Set<string>();
@@ -129,22 +130,23 @@ export async function activateProfile(store: ProfileStore, profile: Profile): Pr
         // The role is usable as soon as Azure accepts the request; no need to poll for it.
         const end = result.endDateTime;
         await store.setActivation(profile.name, { endDateTime: end });
-        void vscode.window.showInformationMessage(
-          `✔ ${config.roleName} activated until ${formatLocalTime(end)} (${formatRemaining(end)} left)`,
-        );
+        const okText = `${config.roleName} (${profile.name}) activated until ${formatLocalTime(end)} (${formatRemaining(end)} left)`;
+        notifyDesktop("PIM role activated", okText);
+        void vscode.window.showInformationMessage(`✔ ${okText}`);
         // Reconcile the stored end time with Azure's actual instance shortly after.
         setTimeout(() => void reconcileActivation(store, profile.name, config, token), RECONCILE_DELAY_MS);
       },
     );
   } catch (err) {
     if (isDurationTooLong(err)) {
-      const choice = await vscode.window.showErrorMessage(
-        `PIM: ${formatHours(hours)} is longer than the ${profile.roleName} policy allows. Choose a shorter activation length.`,
-        "Set activation length",
-      );
+      const text = `${formatHours(hours)} is longer than the ${profile.roleName} policy allows. Choose a shorter activation length.`;
+      notifyDesktop(`PIM activation failed: ${profile.name}`, text);
+      const choice = await vscode.window.showErrorMessage(`PIM: ${text}`, "Set activation length");
       if (choice) await vscode.commands.executeCommand("pim.setActivationLength", profile);
     } else {
-      void vscode.window.showErrorMessage(`PIM: ${describeError(err)}`);
+      const text = describeError(err);
+      notifyDesktop(`PIM activation failed: ${profile.name}`, text);
+      void vscode.window.showErrorMessage(`PIM: ${text}`);
     }
   } finally {
     inFlight.delete(key);
@@ -196,9 +198,11 @@ export async function refreshActivations(store: ProfileStore): Promise<void> {
       }
       const end = inst.properties.endDateTime;
       const previous = store.getActivation(p.name);
+      const same = previous && previous.endDateTime === end;
       await store.setActivation(p.name, {
         endDateTime: end,
-        remindedFor: previous && previous.endDateTime === end ? previous.remindedFor : undefined,
+        remindedFor: same ? previous.remindedFor : undefined,
+        expiredNotifiedFor: same ? previous.expiredNotifiedFor : undefined,
       });
     } catch (err) {
       console.warn(`PIM: failed to refresh activation for "${p.name}": ${describeError(err)}`);
