@@ -3,7 +3,7 @@
   "displayName": "Azure PIM Activator",
   "description": "Activate Azure PIM eligible roles from saved profiles.",
   "publisher": "CharithJayasankha",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
@@ -142,6 +142,11 @@
           "default": 15,
           "minimum": 0,
           "description": "Minutes before expiry to show a reminder (0 disables)"
+        },
+        "pim.desktopNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show OS desktop notifications for expiry reminders, expirations and activation results when VS Code is not focused."
         }
       }
     }

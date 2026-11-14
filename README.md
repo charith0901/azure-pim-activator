@@ -10,7 +10,8 @@ Stop opening the Azure portal, searching for **My roles**, and filling in the sa
 - **One-click activation.** Click ▶ on a profile, or run **PIM: Activate profile** from the Command Palette. Progress shows in a notification.
 - **Choose how long.** Activations last 8 hours by default. Change the default in settings, or right-click a profile and pick **Set activation length** to give it its own length, from 30 minutes to 24 hours.
 - **Live countdown in the status bar.** See which role is active and how much time is left. Click it to activate another profile.
-- **Expiry reminders.** You get a warning before a role expires, with a **Re-activate** button to extend it on the spot.
+- **Expiry reminders.** You get a warning before a role expires, with a **Re-activate** button to extend it on the spot, and another notice once it has expired.
+- **Desktop notifications.** When VS Code isn't focused, reminders, expirations and activation results also appear as native OS notifications (Windows, macOS, Linux via `notify-send`).
 - **Detects active roles.** If the role is already active, the extension tells you when it expires instead of sending a duplicate request.
 - **Works across scopes.** Supports eligible roles on subscriptions, resource groups, resources and management groups. You don't need existing access to the subscription to see your eligibilities.
 - **No stored secrets.** Sign-in uses VS Code's built-in Microsoft account provider. The extension never sees or saves your password.
@@ -43,6 +44,7 @@ That's it. The status bar shows the remaining time while the role is active.
 | --- | --- | --- |
 | `pim.activationHours` | `8` | Default activation length in hours (0.5–24) for profiles that don't set their own. |
 | `pim.reminderMinutes` | `15` | How many minutes before expiry to show a reminder. Set to `0` to turn reminders off. |
+| `pim.desktopNotifications` | `true` | Show native OS notifications for reminders, expirations and activation results while VS Code isn't focused. |
 
 ## Requirements
 

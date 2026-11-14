@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+- **Desktop notifications.** Expiry reminders, expirations and activation results now also appear as native OS notifications when VS Code isn't focused. Turn them off with the new `pim.desktopNotifications` setting.
+- A notice, with a **Re-activate** button, when an activation has expired.
+
 ## 0.3.1
 
 ### Changed
